@@ -24,7 +24,7 @@ services:
     ports:
       - "127.0.0.1:2375:2375"
     networks:
-      - qwickguard-internal
+      - proxy-internal
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
       interval: 30s
@@ -44,7 +44,8 @@ services:
     ports:
       - "9000:9000"
     networks:
-      - qwickguard-internal
+      - proxy-internal
+      - default
     depends_on:
       socket-proxy:
         condition: service_healthy
@@ -59,7 +60,8 @@ services:
     ports:
       - "8888:8080"
     networks:
-      - qwickguard-internal
+      - proxy-internal
+      - default
     depends_on:
       socket-proxy:
         condition: service_healthy
@@ -68,6 +70,8 @@ volumes:
   portainer_data:
 
 networks:
-  qwickguard-internal:
+  proxy-internal:
     driver: bridge
     internal: true
+  default:
+    driver: bridge
