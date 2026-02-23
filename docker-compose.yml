@@ -67,8 +67,32 @@ services:
       socket-proxy:
         condition: service_healthy
 
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: qwickguard-beszel
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - beszel_data:/beszel_data
+      - beszel_socket:/beszel_socket
+
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: qwickguard-beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - beszel_socket:/beszel_socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LISTEN: /beszel_socket/beszel.sock
+      KEY: "${BESZEL_AGENT_KEY}"
+
 volumes:
   portainer_data:
+  beszel_data:
+  beszel_socket:
 
 networks:
   proxy-internal:
