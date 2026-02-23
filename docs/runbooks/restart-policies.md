@@ -21,7 +21,7 @@ Containers with `no` or `on-failure` restart policies will not survive host rebo
 
 ## Current State (Verified 2026-02-23)
 
-All 8 containers are compliant. Verified with:
+All 9 containers are compliant. Verified with:
 
 ```bash
 for c in $(docker ps -aq); do
@@ -50,7 +50,7 @@ These containers are not managed by docker-compose. Their restart policy is set 
 |-----------|-------|----------------|-------|
 | faabzi-supertokens | registry.supertokens.io/supertokens/supertokens-postgresql:9.2 | unless-stopped | Standalone container |
 | faabzi-postgres | postgres:15-alpine | unless-stopped | compose-managed (faabzi project) |
-
+| trinity-university | trinity-university (local build) | unless-stopped | Standalone container, Next.js app on port 3700 |
 Note: `faabzi-postgres` is managed by a separate faabzi docker-compose project (label: `com.docker.compose.project=faabzi`). Its restart policy is defined in that compose file.
 
 ---

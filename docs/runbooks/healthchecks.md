@@ -2,7 +2,7 @@
 
 **Issue:** #23
 **Date verified:** 2026-02-23
-**Severity:** Medium - faabzi-supertokens lacks healthcheck
+**Severity:** Medium - faabzi-supertokens and trinity-university lack healthchecks
 
 ---
 
@@ -48,15 +48,27 @@ docker exec faabzi-postgres pg_isready -U postgres
 
 ### Containers WITHOUT Healthchecks
 
-| Container | Image | Type | Status |
-|-----------|-------|------|--------|
-| faabzi-supertokens | registry.supertokens.io/supertokens/supertokens-postgresql:9.2 | Standalone | NO HEALTHCHECK |
+| Container | Image | Type | Health Endpoint | Status |
+|-----------|-------|------|-----------------|--------|
+| faabzi-supertokens | registry.supertokens.io/supertokens/supertokens-postgresql:9.2 | Standalone | `curl -sf http://localhost:3567/hello` | NO HEALTHCHECK |
+| trinity-university | trinity-university (local build) | Standalone | `node -e` HTTP check on `http://localhost:3000/api/health` | NO HEALTHCHECK |
 
 `faabzi-supertokens` exposes its API on port 3567. The `/hello` endpoint returns HTTP 200 and body `Hello` when the service is healthy. `curl` is available inside the container (verified).
 
 ```bash
 docker exec faabzi-supertokens curl -sf http://localhost:3567/hello
 # Output: Hello
+```
+
+`trinity-university` is a Node.js app (Next.js) exposing port 3000 internally, mapped to port 3700 on host. The `/api/health` endpoint returns JSON `{"status":"ok","timestamp":"...","version":"unknown"}`. No `curl` or `wget` available inside the container, but `node` is available.
+
+```bash
+# From host (port 3700):
+curl -sf http://localhost:3700/api/health
+# Output: {"status":"ok","timestamp":"2026-02-23T07:11:48.099Z","version":"unknown"}
+
+# From inside container (port 3000, using node):
+docker exec trinity-university node -e "const http = require('http'); http.get('http://localhost:3000/api/health', (r) => { let d=''; r.on('data', c => d+=c); r.on('end', () => { process.exit(r.statusCode === 200 ? 0 : 1); }); }).on('error', () => process.exit(1));"
 ```
 
 ---
@@ -108,12 +120,72 @@ services:
       start_period: 10s
 ```
 
+---
+
+## Adding a Healthcheck to trinity-university
+
+`trinity-university` is a standalone container with no `curl` or `wget`. The healthcheck must use `node` to make the HTTP request.
+
+**Important:** Recreating `trinity-university` requires downtime. Schedule during a maintenance window.
+
+### Capture Current Container Config First
+
+Before recreating, capture the full container configuration:
+
+```bash
+docker inspect trinity-university > ~/trinity-university-backup.json
+```
+
+### Option A: docker run (standalone)
+
+```bash
+docker stop trinity-university
+docker rm trinity-university
+
+docker run -d \
+  --name trinity-university \
+  --restart unless-stopped \
+  -p 3700:3000 \
+  --health-cmd='node -e "const http = require(\"http\"); http.get(\"http://localhost:3000/api/health\", (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on(\"error\", () => process.exit(1));"' \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  --health-start-period=30s \
+  trinity-university
+```
+
+Note: The `--health-start-period=30s` gives Next.js time to start up before healthchecks begin.
+
+### Option B: docker-compose (preferred for future management)
+
+Add to a `docker-compose.yml`:
+
+```yaml
+services:
+  trinity-university:
+    image: trinity-university
+    container_name: trinity-university
+    restart: unless-stopped
+    ports:
+      - "3700:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); http.get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+```
+
 ### Verify After Recreation
 
 ```bash
-# Wait ~15 seconds for start_period to pass
-docker ps --filter name=faabzi-supertokens --format "{{.Names}}: {{.Status}}"
-# Expected: faabzi-supertokens: Up N seconds (healthy)
+# Wait ~35 seconds for start_period to pass
+docker ps --filter name=trinity-university --format "{{.Names}}: {{.Status}}"
+# Expected: trinity-university: Up N seconds (healthy)
+
+# Test health endpoint still works
+curl -sf http://localhost:3700/api/health
+# Expected: {"status":"ok",...}
 ```
 
 ---
@@ -164,5 +236,5 @@ ssh macmini-devserver 'docker ps --format "{{.Names}}: {{.Status}}"'
 Re-audit after:
 
 - Any new container is deployed (must include healthcheck)
-- `faabzi-supertokens` is recreated (verify healthcheck takes effect)
+- `faabzi-supertokens` or `trinity-university` is recreated (verify healthcheck takes effect)
 - Docker or Colima version upgrades
