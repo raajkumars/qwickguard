@@ -25,6 +25,7 @@ services:
       - "127.0.0.1:2375:2375"
     networks:
       - proxy-internal
+      - default
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
       interval: 30s
