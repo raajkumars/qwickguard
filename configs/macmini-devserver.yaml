@@ -1,0 +1,84 @@
+# QwickGuard Server Configuration
+# macmini-devserver - primary development/CI infrastructure
+hostname: macmini-devserver
+agent_id: macmini-1
+brain_url: http://localhost:8500  # change to VPS tailscale IP when split
+compute_worker_url: http://localhost:8001
+
+check_interval_seconds: 300  # 5 minutes
+
+thresholds:
+  cpu_warning: 80
+  cpu_critical: 95
+  ram_warning: 85
+  ram_critical: 95
+  disk_warning: 80
+  disk_critical: 90
+
+containers:
+  - name: faabzi-postgres
+    critical: true
+    compose_file: null  # standalone
+  - name: faabzi-supertokens
+    critical: false
+    compose_file: null
+  - name: trinity-university
+    critical: false
+    compose_file: null
+  - name: qwickbrain-server
+    critical: true
+    compose_file: ~/Projects/qwickbrain/docker-compose.yml
+  - name: qwickbrain-node
+    critical: true
+    compose_file: ~/Projects/qwickbrain/docker-compose.yml
+  - name: qwickbrain-postgres
+    critical: true
+    compose_file: ~/Projects/qwickbrain/docker-compose.yml
+  - name: qwickbrain-redis
+    critical: true
+    compose_file: ~/Projects/qwickbrain/docker-compose.yml
+  - name: qwickbrain-qdrant
+    critical: true
+    compose_file: ~/Projects/qwickbrain/docker-compose.yml
+  - name: qwickbrain-neo4j
+    critical: true
+    compose_file: ~/Projects/qwickbrain/docker-compose.yml
+
+services:
+  - name: compute-worker
+    url: http://localhost:8001/health
+    critical: true
+  - name: ollama
+    url: http://localhost:11434/api/tags
+    critical: false
+  - name: gateway-faabzi
+    url: http://localhost:3300/qapi/health
+    critical: false
+  - name: payload-faabzi
+    url: http://localhost:3302/api/health
+    critical: false
+  - name: trinity-university
+    url: http://localhost:3700/api/health
+    critical: false
+
+backups:
+  - name: faabzi-postgres
+    container: faabzi-postgres
+    command: "pg_dumpall -U postgres"
+    schedule: "0 */6 * * *"
+    retention_days: 14
+  - name: qwickbrain-postgres
+    container: qwickbrain-postgres
+    command: "pg_dumpall -U qwickbrain"
+    schedule: "0 */6 * * *"
+    retention_days: 14
+
+github_runners:
+  - ~/actions-runner
+  - ~/actions-runner-2
+  - ~/actions-runner-3
+
+zombie_patterns:
+  - "qwickapps-test-"
+  - "tsx watch.*control-panel"
+  - "next dev"
