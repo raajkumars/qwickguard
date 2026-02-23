@@ -1,0 +1,30 @@
+# QwickGuard Monitoring Stack
+# Deploy on macmini: docker compose up -d
+# UIs accessible via Tailscale at http://macmini-devserver:<port>
+
+services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: qwickguard-socket-proxy
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1
+      SERVICES: 1
+      TASKS: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      IMAGES: 1
+      INFO: 1
+      EVENTS: 1
+      POST: 0
+      DELETE: 0
+    ports:
+      - "127.0.0.1:2375:2375"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
