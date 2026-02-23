@@ -31,6 +31,42 @@ services:
       timeout: 5s
       retries: 3
 
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: qwickguard-portainer
+    restart: unless-stopped
+    command:
+      - -H
+      - tcp://qwickguard-socket-proxy:2375
+      - --tlsskipverify
+    volumes:
+      - portainer_data:/data
+    ports:
+      - "9000:9000"
+    networks:
+      - qwickguard-internal
+    depends_on:
+      socket-proxy:
+        condition: service_healthy
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: qwickguard-dozzle
+    restart: unless-stopped
+    environment:
+      DOZZLE_REMOTE_HOST: tcp://qwickguard-socket-proxy:2375
+      DOZZLE_NO_ANALYTICS: "true"
+    ports:
+      - "8888:8080"
+    networks:
+      - qwickguard-internal
+    depends_on:
+      socket-proxy:
+        condition: service_healthy
+
+volumes:
+  portainer_data:
+
 networks:
   qwickguard-internal:
     driver: bridge
