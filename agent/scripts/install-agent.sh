@@ -16,7 +16,20 @@ mkdir -p "$QG_HOME"/{logs,backups/faabzi-postgres,backups/qwickbrain-postgres,sc
 
 # 2. Create Python venv and install
 echo "[2/6] Setting up Python environment..."
-python3 -m venv "$VENV_PATH"
+# Find Python 3.11+ (macOS system python may be too old)
+PYTHON3=""
+for py in python3.13 python3.12 python3.11; do
+    if command -v "$py" &>/dev/null; then
+        PYTHON3="$py"
+        break
+    fi
+done
+if [ -z "$PYTHON3" ]; then
+    echo "ERROR: Python 3.11+ required. Install via: brew install python@3.11"
+    exit 1
+fi
+echo "  Using $PYTHON3 ($($PYTHON3 --version))"
+"$PYTHON3" -m venv "$VENV_PATH"
 "$VENV_PATH/bin/pip" install --upgrade pip --quiet
 "$VENV_PATH/bin/pip" install -e "$AGENT_DIR" --quiet
 
