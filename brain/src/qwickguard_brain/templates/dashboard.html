@@ -8,7 +8,7 @@
 {% block content %}
 <div id="dashboard-content"
      hx-get="/dashboard/partials/overview"
-     hx-trigger="every 300s"
+     hx-trigger="every 60s"
      hx-swap="innerHTML">
   {% include "partials/system_status.html" %}
 </div>

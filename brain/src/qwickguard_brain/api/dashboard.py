@@ -299,6 +299,30 @@ async def metrics_page(request: Request, range: str = "24h") -> HTMLResponse:
     })
 
 
+@router.get("/metrics/partials/charts", response_class=HTMLResponse)
+async def metrics_charts_partial(request: Request, range: str = "24h") -> HTMLResponse:
+    """Return the inner metrics charts content fragment for HTMX auto-refresh."""
+    agent = await _get_agent()
+    if not agent:
+        return templates.TemplateResponse("partials/metrics_charts.html", {
+            "request": request,
+            "agent": None,
+            "chart_data": {"timestamps": []},
+            "range": range,
+        })
+
+    hours = _parse_range(range)
+    history = await get_agent_history(agent["agent_id"], hours=hours)
+    chart_data = _prepare_chart_data(history)
+
+    return templates.TemplateResponse("partials/metrics_charts.html", {
+        "request": request,
+        "agent": agent,
+        "chart_data": chart_data,
+        "range": range,
+    })
+
+
 # ---------------------------------------------------------------------------
 # Audit log viewer
 # ---------------------------------------------------------------------------
