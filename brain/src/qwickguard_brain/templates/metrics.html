@@ -9,7 +9,7 @@
   <span style="font-size:13px; color:var(--text-muted);">Time Range:</span>
   {% for r in ["1h", "6h", "24h", "7d"] %}
   <a href="/metrics?range={{ r }}"
-     class="btn {% if range == r %}btn-outline{% else %}btn-outline{% endif %}"
+     class="btn btn-outline"
      style="{% if range == r %}border-color:var(--accent-green); color:var(--accent-green);{% endif %}">
     {{ r }}
   </a>
@@ -24,36 +24,40 @@
 </div>
 {% else %}
 
+<style>
+  .chart-container { position: relative; height: 220px; width: 100%; }
+</style>
+
 <div class="grid-2">
   <div class="card">
     <div class="card-title">CPU Usage (%)</div>
-    <canvas id="cpuChart" height="200"></canvas>
+    <div class="chart-container"><canvas id="cpuChart"></canvas></div>
   </div>
   <div class="card">
     <div class="card-title">Memory Usage (%)</div>
-    <canvas id="memChart" height="200"></canvas>
+    <div class="chart-container"><canvas id="memChart"></canvas></div>
   </div>
 </div>
 
 <div class="grid-2 mt-16">
   <div class="card">
     <div class="card-title">Disk Usage (%)</div>
-    <canvas id="diskChart" height="200"></canvas>
+    <div class="chart-container"><canvas id="diskChart"></canvas></div>
   </div>
   <div class="card">
     <div class="card-title">Load Average</div>
-    <canvas id="loadChart" height="200"></canvas>
+    <div class="chart-container"><canvas id="loadChart"></canvas></div>
   </div>
 </div>
 
 <div class="grid-2 mt-16">
   <div class="card">
     <div class="card-title">Container Restarts ({{ range }})</div>
-    <canvas id="restartsChart" height="200"></canvas>
+    <div class="chart-container"><canvas id="restartsChart"></canvas></div>
   </div>
   <div class="card">
     <div class="card-title">Service Response Times (ms)</div>
-    <canvas id="responseChart" height="200"></canvas>
+    <div class="chart-container"><canvas id="responseChart"></canvas></div>
   </div>
 </div>
 
@@ -81,7 +85,6 @@ const defaultOpts = {
 
 const data = {{ chart_data | tojson }};
 
-// CPU chart
 new Chart(document.getElementById('cpuChart'), {
   type: 'line',
   data: {
@@ -91,16 +94,12 @@ new Chart(document.getElementById('cpuChart'), {
       data: data.cpu,
       borderColor: chartColors.green,
       backgroundColor: 'rgba(22, 199, 132, 0.08)',
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-      borderWidth: 2,
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
     }]
   },
   options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
 });
 
-// Memory chart
 new Chart(document.getElementById('memChart'), {
   type: 'line',
   data: {
@@ -110,16 +109,12 @@ new Chart(document.getElementById('memChart'), {
       data: data.memory,
       borderColor: chartColors.orange,
       backgroundColor: 'rgba(240, 185, 11, 0.08)',
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-      borderWidth: 2,
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
     }]
   },
   options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
 });
 
-// Disk chart
 new Chart(document.getElementById('diskChart'), {
   type: 'line',
   data: {
@@ -129,16 +124,12 @@ new Chart(document.getElementById('diskChart'), {
       data: data.disk,
       borderColor: chartColors.blue,
       backgroundColor: 'rgba(77, 166, 255, 0.08)',
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-      borderWidth: 2,
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
     }]
   },
   options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
 });
 
-// Load average chart
 new Chart(document.getElementById('loadChart'), {
   type: 'line',
   data: {
@@ -152,7 +143,6 @@ new Chart(document.getElementById('loadChart'), {
   options: defaultOpts
 });
 
-// Container restarts bar chart
 if (data.container_restarts && data.container_restarts.names.length > 0) {
   new Chart(document.getElementById('restartsChart'), {
     type: 'bar',
@@ -162,17 +152,15 @@ if (data.container_restarts && data.container_restarts.names.length > 0) {
         label: 'Restarts',
         data: data.container_restarts.counts,
         backgroundColor: chartColors.red + '88',
-        borderColor: chartColors.red,
-        borderWidth: 1,
+        borderColor: chartColors.red, borderWidth: 1,
       }]
     },
     options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, beginAtZero: true } } }
   });
 } else {
-  document.getElementById('restartsChart').parentElement.innerHTML += '<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:20px 0;">No restarts in this period</div>';
+  document.getElementById('restartsChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px;">No restarts in this period</div>';
 }
 
-// Service response times
 if (data.service_response && data.service_response.length > 0) {
   const svcColors = [chartColors.green, chartColors.orange, chartColors.blue, chartColors.purple, chartColors.cyan, chartColors.red];
   new Chart(document.getElementById('responseChart'), {
@@ -183,15 +171,13 @@ if (data.service_response && data.service_response.length > 0) {
         label: svc.name,
         data: svc.times,
         borderColor: svcColors[i % svcColors.length],
-        tension: 0.3,
-        pointRadius: 0,
-        borderWidth: 2,
+        tension: 0.3, pointRadius: 0, borderWidth: 2,
       }))
     },
     options: defaultOpts
   });
 } else {
-  document.getElementById('responseChart').parentElement.innerHTML += '<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:20px 0;">No service data</div>';
+  document.getElementById('responseChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px;">No service data</div>';
 }
 </script>
 

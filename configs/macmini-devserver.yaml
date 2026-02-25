@@ -22,9 +22,6 @@ containers:
   - name: faabzi-supertokens
     critical: false
     compose_file: null
-  - name: trinity-university
-    critical: false
-    compose_file: null
   - name: qwickbrain-server
     critical: true
     compose_file: ~/Projects/qwickbrain/docker-compose.yml
@@ -50,15 +47,6 @@ services:
     critical: true
   - name: ollama
     url: http://localhost:11434/api/tags
-    critical: false
-  - name: gateway-faabzi
-    url: http://localhost:3300/qapi/health
-    critical: false
-  - name: payload-faabzi
-    url: http://localhost:3302/api/health
-    critical: false
-  - name: trinity-university
-    url: http://localhost:3700/api/health
     critical: false
 
 backups:
