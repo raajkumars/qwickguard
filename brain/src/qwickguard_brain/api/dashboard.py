@@ -78,9 +78,9 @@ def _relative_time(timestamp_str: str | None) -> str:
         return "unknown"
 
 
-def _parse_range(range_str: str) -> int:
-    """Convert a range string like '1h', '6h', '24h', '7d' to hours."""
-    mapping = {"1h": 1, "6h": 6, "24h": 24, "7d": 168}
+def _parse_range(range_str: str) -> float:
+    """Convert a range string like '5m', '1h', '24h', '7d' to hours."""
+    mapping: dict[str, float] = {"5m": 5 / 60, "1h": 1, "6h": 6, "24h": 24, "7d": 168}
     return mapping.get(range_str, 24)
 
 
