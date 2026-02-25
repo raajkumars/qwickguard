@@ -10,11 +10,12 @@
 {% set status = report.get('analysis', {}).get('status', agent.last_status or 'unknown') if report else (agent.last_status or 'unknown') %}
 {% set status_badge = 'badge-green' if status == 'healthy' else ('badge-orange' if status == 'warning' else ('badge-red' if status == 'critical' else 'badge-gray')) %}
 
-{# Metrics shortcut #}
+{# Metrics shortcut — agent nests system metrics under metrics.system #}
 {% set metrics = report.get('metrics', {}) if report else {} %}
-{% set cpu = metrics.get('cpu_percent', 0) %}
-{% set mem = metrics.get('memory_percent', 0) %}
-{% set disk = metrics.get('disk_percent', 0) %}
+{% set sys = metrics.get('system', {}) %}
+{% set cpu = sys.get('cpu_percent', 0) %}
+{% set mem = sys.get('ram_percent', 0) %}
+{% set disk = sys.get('disk_percent', 0) %}
 {% set containers = metrics.get('containers', []) %}
 {% set services = metrics.get('services', []) %}
 
@@ -72,9 +73,10 @@
         {{ cpu | round(0) | int }}%
       </div>
     </div>
-    {% if metrics.get('load_avg_1m') is not none %}
+    {% set load = sys.get('load_avg', []) %}
+    {% if load %}
     <div style="font-size:11.5px; color:var(--text-dim);">
-      Load: {{ metrics.get('load_avg_1m', 0) | round(2) }} / {{ metrics.get('load_avg_5m', 0) | round(2) }} / {{ metrics.get('load_avg_15m', 0) | round(2) }}
+      Load: {{ load[0] | round(2) }} / {{ load[1] | round(2) }} / {{ load[2] | round(2) }}
     </div>
     {% endif %}
   </div>
@@ -94,7 +96,11 @@
         {{ mem | round(0) | int }}%
       </div>
     </div>
+    {% if sys.get('ram_available_gb') is not none %}
+    <div style="font-size:11.5px; color:var(--text-dim);">{{ sys.get('ram_available_gb', 0) | round(1) }} GB free</div>
+    {% else %}
     <div style="font-size:11.5px; color:var(--text-dim);">RAM</div>
+    {% endif %}
   </div>
 
   {# Disk card #}
@@ -112,10 +118,10 @@
         {{ disk | round(0) | int }}%
       </div>
     </div>
-    {% if metrics.get('disk_used_gb') is not none and metrics.get('disk_total_gb') is not none %}
-    <div style="font-size:11.5px; color:var(--text-dim);">
-      {{ metrics.get('disk_used_gb', 0) | round(1) }} / {{ metrics.get('disk_total_gb', 0) | round(1) }} GB
-    </div>
+    {% if sys.get('disk_available_gb') is not none %}
+    <div style="font-size:11.5px; color:var(--text-dim);">{{ sys.get('disk_available_gb', 0) | round(1) }} GB free</div>
+    {% else %}
+    <div style="font-size:11.5px; color:var(--text-dim);">Disk</div>
     {% endif %}
   </div>
 </div>
@@ -153,8 +159,8 @@
               <span style="color:var(--text-dim);">—</span>
             {% endif %}
           </td>
-          <td style="color:{% if c.get('restarts', 0) > 0 %}var(--accent-orange){% else %}var(--text-muted){% endif %};">
-            {{ c.get('restarts', 0) }}
+          <td style="color:{% if c.get('restart_count', 0) > 0 %}var(--accent-orange){% else %}var(--text-muted){% endif %};">
+            {{ c.get('restart_count', 0) }}
           </td>
           <td>{{ c.get('cpu_percent', 0) | round(1) }}%</td>
           <td>
