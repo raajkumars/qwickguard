@@ -89,10 +89,31 @@ services:
       LISTEN: /beszel_socket/beszel.sock
       KEY: "${BESZEL_AGENT_KEY}"
 
+  brain:
+    build:
+      context: .
+      dockerfile: brain/Dockerfile
+    container_name: qwickguard-brain
+    restart: unless-stopped
+    ports:
+      - "8500:8500"
+    volumes:
+      - brain_data:/data
+      - ./docs/runbooks:/app/runbooks:ro
+    environment:
+      DATABASE_PATH: /data/qwickguard.db
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: raajkumars/qwickguard
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    networks:
+      - default
+
 volumes:
   portainer_data:
   beszel_data:
   beszel_socket:
+  brain_data:
 
 networks:
   proxy-internal:
