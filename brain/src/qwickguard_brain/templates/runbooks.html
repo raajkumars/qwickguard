@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% set active_page = "runbooks" %}
+
+{% block title %}Runbooks — QwickGuard{% endblock %}
+{% block header_title %}Runbooks{% endblock %}
+
+{% block content %}
+{% if runbooks %}
+<div class="grid-2">
+  {% for rb in runbooks %}
+  <a href="/runbooks/{{ rb.filename }}" class="card" style="text-decoration:none; transition:border-color 0.15s;">
+    <div class="card-title" style="margin-bottom:8px;">{{ rb.title }}</div>
+    {% if rb.severity %}
+    <span class="badge {% if rb.severity == 'critical' %}badge-red{% elif rb.severity == 'warning' %}badge-orange{% else %}badge-gray{% endif %}" style="margin-bottom:8px;">
+      {{ rb.severity }}
+    </span>
+    {% endif %}
+    {% if rb.description %}
+    <div style="font-size:13px; color:var(--text-muted); margin-top:6px;">{{ rb.description }}</div>
+    {% endif %}
+    <div style="font-size:11px; color:var(--text-dim); margin-top:10px;">{{ rb.filename }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">&#9998;</div>
+  <div class="empty-state-title">No runbooks found</div>
+  <div class="empty-state-body">Add markdown files to docs/runbooks/ to see them here.</div>
+</div>
+{% endif %}
+{% endblock %}

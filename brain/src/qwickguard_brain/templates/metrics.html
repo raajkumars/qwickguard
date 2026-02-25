@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% set active_page = "metrics" %}
+
+{% block title %}Metrics — QwickGuard{% endblock %}
+{% block header_title %}Metrics{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+  <span style="font-size:13px; color:var(--text-muted);">Time Range:</span>
+  {% for r in ["1h", "6h", "24h", "7d"] %}
+  <a href="/metrics?range={{ r }}"
+     class="btn {% if range == r %}btn-outline{% else %}btn-outline{% endif %}"
+     style="{% if range == r %}border-color:var(--accent-green); color:var(--accent-green);{% endif %}">
+    {{ r }}
+  </a>
+  {% endfor %}
+</div>
+
+{% if not chart_data.timestamps %}
+<div class="empty-state">
+  <div class="empty-state-icon">&#9650;</div>
+  <div class="empty-state-title">No metrics data yet</div>
+  <div class="empty-state-body">Waiting for agent reports to populate charts.</div>
+</div>
+{% else %}
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">CPU Usage (%)</div>
+    <canvas id="cpuChart" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Memory Usage (%)</div>
+    <canvas id="memChart" height="200"></canvas>
+  </div>
+</div>
+
+<div class="grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">Disk Usage (%)</div>
+    <canvas id="diskChart" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Load Average</div>
+    <canvas id="loadChart" height="200"></canvas>
+  </div>
+</div>
+
+<div class="grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">Container Restarts ({{ range }})</div>
+    <canvas id="restartsChart" height="200"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-title">Service Response Times (ms)</div>
+    <canvas id="responseChart" height="200"></canvas>
+  </div>
+</div>
+
+<script>
+const chartColors = {
+  green: '#16c784',
+  orange: '#f0b90b',
+  red: '#ea3943',
+  blue: '#4da6ff',
+  purple: '#a855f7',
+  cyan: '#22d3ee',
+  grid: 'rgba(42, 42, 68, 0.5)',
+  text: '#8888aa',
+};
+
+const defaultOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: chartColors.text, font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { color: chartColors.text, font: { size: 10 }, maxTicksLimit: 12 }, grid: { color: chartColors.grid } },
+    y: { ticks: { color: chartColors.text, font: { size: 10 } }, grid: { color: chartColors.grid } }
+  }
+};
+
+const data = {{ chart_data | tojson }};
+
+// CPU chart
+new Chart(document.getElementById('cpuChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [{
+      label: 'CPU %',
+      data: data.cpu,
+      borderColor: chartColors.green,
+      backgroundColor: 'rgba(22, 199, 132, 0.08)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2,
+    }]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
+});
+
+// Memory chart
+new Chart(document.getElementById('memChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [{
+      label: 'RAM %',
+      data: data.memory,
+      borderColor: chartColors.orange,
+      backgroundColor: 'rgba(240, 185, 11, 0.08)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2,
+    }]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
+});
+
+// Disk chart
+new Chart(document.getElementById('diskChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [{
+      label: 'Disk %',
+      data: data.disk,
+      borderColor: chartColors.blue,
+      backgroundColor: 'rgba(77, 166, 255, 0.08)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2,
+    }]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
+});
+
+// Load average chart
+new Chart(document.getElementById('loadChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [
+      { label: '1m', data: data.load_1m, borderColor: chartColors.green, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+      { label: '5m', data: data.load_5m, borderColor: chartColors.orange, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+      { label: '15m', data: data.load_15m, borderColor: chartColors.red, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+    ]
+  },
+  options: defaultOpts
+});
+
+// Container restarts bar chart
+if (data.container_restarts && data.container_restarts.names.length > 0) {
+  new Chart(document.getElementById('restartsChart'), {
+    type: 'bar',
+    data: {
+      labels: data.container_restarts.names,
+      datasets: [{
+        label: 'Restarts',
+        data: data.container_restarts.counts,
+        backgroundColor: chartColors.red + '88',
+        borderColor: chartColors.red,
+        borderWidth: 1,
+      }]
+    },
+    options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, beginAtZero: true } } }
+  });
+} else {
+  document.getElementById('restartsChart').parentElement.innerHTML += '<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:20px 0;">No restarts in this period</div>';
+}
+
+// Service response times
+if (data.service_response && data.service_response.length > 0) {
+  const svcColors = [chartColors.green, chartColors.orange, chartColors.blue, chartColors.purple, chartColors.cyan, chartColors.red];
+  new Chart(document.getElementById('responseChart'), {
+    type: 'line',
+    data: {
+      labels: data.timestamps,
+      datasets: data.service_response.map((svc, i) => ({
+        label: svc.name,
+        data: svc.times,
+        borderColor: svcColors[i % svcColors.length],
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+      }))
+    },
+    options: defaultOpts
+  });
+} else {
+  document.getElementById('responseChart').parentElement.innerHTML += '<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:20px 0;">No service data</div>';
+}
+</script>
+
+{% endif %}
+{% endblock %}

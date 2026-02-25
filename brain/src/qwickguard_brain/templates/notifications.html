@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% set active_page = "notifications" %}
+
+{% block title %}Notifications — QwickGuard{% endblock %}
+{% block header_title %}Notifications{% endblock %}
+
+{% block content %}
+<!-- Notification History -->
+<div class="card">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:0;">Notification History</div>
+    <div style="margin-left:auto; display:flex; gap:8px;">
+      {% for s in ["", "critical", "warning", "info"] %}
+      <a href="/notifications{% if s %}?severity={{ s }}{% endif %}"
+         class="btn btn-outline" style="font-size:11px; padding:4px 10px;
+         {% if severity_filter == s %}border-color:var(--accent-green); color:var(--accent-green);{% endif %}">
+        {% if s %}{{ s }}{% else %}All{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if notifications %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Severity</th>
+        <th>Title</th>
+        <th>Channel</th>
+        <th>External ID</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in notifications %}
+      {% set sev = n.get('severity', 'info') | lower %}
+      {% set sev_badge = 'badge-red' if sev == 'critical' else ('badge-orange' if sev == 'warning' else 'badge-blue') %}
+      <tr>
+        <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">
+          {{ relative_time(n.get('created_at')) }}
+        </td>
+        <td><span class="badge {{ sev_badge }}">{{ sev }}</span></td>
+        <td style="font-size:12.5px; max-width:350px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          {{ n.get('title', '—') }}
+        </td>
+        <td>
+          {% set ch = n.get('channel', 'internal') %}
+          <span class="badge {% if ch == 'github' %}badge-blue{% elif ch == 'slack' %}badge-orange{% elif ch == 'discord' %}badge-blue{% else %}badge-gray{% endif %}">
+            {{ ch }}
+          </span>
+        </td>
+        <td style="font-size:12px; color:var(--text-dim);">
+          {% if n.get('external_id') %}
+            {% if n.get('channel') == 'github' %}
+              <a href="https://github.com/raajkumars/qwickguard/issues/{{ n.get('external_id') }}" target="_blank" rel="noopener" style="color:var(--accent-blue);">#{{ n.get('external_id') }}</a>
+            {% else %}
+              {{ n.get('external_id') }}
+            {% endif %}
+          {% else %}
+            <span style="color:var(--text-dim);">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#9993;</div>
+    <div class="empty-state-title">No notifications yet</div>
+    <div class="empty-state-body">Notifications from agent reports will appear here.</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Escalation Log -->
+<div class="card mt-16">
+  <div class="card-title">Claude Escalations</div>
+
+  {% if escalations %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Agent</th>
+        <th>Trigger</th>
+        <th>Severity</th>
+        <th>Diagnosis</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in escalations %}
+      {% set parsed = e.get('claude_parsed', {}) or {} %}
+      {% set actions_list = e.get('actions_parsed', []) or [] %}
+      {% set sev = parsed.get('severity', 'unknown') %}
+      {% set sev_badge = 'badge-red' if sev == 'critical' else ('badge-orange' if sev == 'warning' else 'badge-gray') %}
+      <tr>
+        <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">
+          {{ relative_time(e.get('created_at', e.get('timestamp'))) }}
+        </td>
+        <td style="font-size:12px; color:var(--text-muted);">{{ e.get('agent_id', '—') }}</td>
+        <td style="font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted);">
+          {{ e.get('trigger_reason', '—') }}
+        </td>
+        <td><span class="badge {{ sev_badge }}">{{ sev }}</span></td>
+        <td style="font-size:12px; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted);">
+          {{ parsed.get('diagnosis', parsed.get('escalation_summary', '—')) }}
+        </td>
+        <td style="font-size:12px; color:var(--text-dim);">
+          {% if actions_list %}
+            {{ actions_list | length }} action(s)
+          {% else %}
+            <span style="color:var(--text-dim);">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#9888;</div>
+    <div class="empty-state-title">No escalations yet</div>
+    <div class="empty-state-body">Issues escalated to Claude for diagnosis will appear here.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

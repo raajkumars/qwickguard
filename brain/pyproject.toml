@@ -15,6 +15,7 @@ dependencies = [
     "anthropic>=0.40",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    "markdown>=3.5",
 ]
 
 [project.optional-dependencies]

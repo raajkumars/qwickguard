@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% set active_page = "audit" %}
+
+{% block title %}Audit Log — QwickGuard{% endblock %}
+{% block header_title %}Audit Log{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <span style="font-size:13px; color:var(--text-muted); font-weight:600;">Filters:</span>
+    <form id="audit-filters" method="get" action="/audit" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <select name="action" onchange="this.form.submit()" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px;">
+        <option value="">All Actions</option>
+        {% for a in available_actions %}
+        <option value="{{ a }}" {% if filters.action == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+      <select name="result" onchange="this.form.submit()" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px;">
+        <option value="">All Results</option>
+        {% for r in ["success", "failed", "cooldown", "rejected", "skipped"] %}
+        <option value="{{ r }}" {% if filters.result == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+      {% if filters.action or filters.result %}
+      <a href="/audit" class="btn btn-outline" style="font-size:12px; padding:5px 10px;">Clear</a>
+      {% endif %}
+    </form>
+    <span style="margin-left:auto; font-size:12px; color:var(--text-dim);">{{ actions | length }} action(s)</span>
+  </div>
+</div>
+
+<!-- Actions table -->
+<div class="card">
+  {% if actions %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Action</th>
+        <th>Target</th>
+        <th>Reason</th>
+        <th>Decided By</th>
+        <th>Result</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in actions %}
+      {% set result = a.get('result', a.get('status', 'unknown')) | lower %}
+      {% set result_badge = 'badge-green' if result in ('success', 'ok') else ('badge-red' if result == 'failed' else ('badge-orange' if result == 'cooldown' else ('badge-gray' if result == 'rejected' else 'badge-gray'))) %}
+      <tr>
+        <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">
+          {{ relative_time(a.get('timestamp')) }}
+        </td>
+        <td style="font-family:monospace; font-size:12.5px;">{{ a.get('action', '—') }}</td>
+        <td style="font-size:12.5px; color:var(--text-muted);">{{ a.get('target', '—') }}</td>
+        <td style="font-size:12px; color:var(--text-muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          {{ a.get('reason', '—') }}
+        </td>
+        <td style="font-size:11.5px; color:var(--text-dim);">{{ a.get('decided_by', '—') }}</td>
+        <td><span class="badge {{ result_badge }}">{{ result }}</span></td>
+        <td style="font-size:11.5px; color:var(--accent-red);">
+          {% if a.get('error') %}{{ a.get('error') }}{% else %}<span style="color:var(--text-dim);">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if has_more %}
+  <div style="text-align:center; padding:16px 0;">
+    <a href="/audit?page={{ page + 1 }}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.result %}&result={{ filters.result }}{% endif %}"
+       class="btn btn-outline">Load more</a>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">&#9776;</div>
+    <div class="empty-state-title">No actions recorded</div>
+    <div class="empty-state-body">Actions taken by the agent will appear here.</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
