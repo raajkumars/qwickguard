@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from .config import settings
 from .storage import cleanup_old_data, init_db
 from .api.health import router as health_router
-from .api.agents import router as agents_router
+from .api.agents import router as agents_router, compat_router as agents_compat_router
 from .api.dashboard import router as dashboard_router
 from .registry import heartbeat_checker
 from .digest import schedule_daily_digest
@@ -58,4 +58,5 @@ app = FastAPI(
 
 app.include_router(health_router)
 app.include_router(agents_router)
+app.include_router(agents_compat_router)
 app.include_router(dashboard_router)

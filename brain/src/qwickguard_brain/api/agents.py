@@ -18,13 +18,12 @@ logger = logging.getLogger("qwickguard.brain.api.agents")
 
 router = APIRouter(prefix="/api/v1")
 
+# Compatibility router for the agent's /api/agent/report endpoint
+compat_router = APIRouter(prefix="/api")
+
 
 def _format_status_body(report: dict[str, Any]) -> str:
-    """Format a report's analysis issues into a readable notification body.
-
-    Returns a plain-text summary of the issues list from the analysis field.
-    Falls back gracefully when the analysis or issues are absent.
-    """
+    """Format a report's analysis issues into a readable notification body."""
     analysis = report.get("analysis", {})
     issues = analysis.get("issues", [])
     hostname = report.get("hostname", report.get("agent_id", "unknown"))
@@ -50,11 +49,8 @@ def _format_status_body(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-@router.post("/agents/{agent_id}/report")
-async def post_report(agent_id: str, request: Request) -> dict:
-    """Accept a report payload from an agent and persist it."""
-    body = await request.json()
-    # Ensure agent_id from path is authoritative
+async def _handle_report(agent_id: str, body: dict) -> dict:
+    """Shared report handling logic for both v1 and compat endpoints."""
     body["agent_id"] = agent_id
     await store_report(body)
     logger.info("Accepted report from agent %s", agent_id)
@@ -81,6 +77,21 @@ async def post_report(agent_id: str, request: Request) -> dict:
             return {"status": "accepted", "agent_id": agent_id, "escalation": result}
 
     return {"status": "accepted", "agent_id": agent_id}
+
+
+@router.post("/agents/{agent_id}/report")
+async def post_report(agent_id: str, request: Request) -> dict:
+    """Accept a report payload from an agent (v1 endpoint with agent_id in path)."""
+    body = await request.json()
+    return await _handle_report(agent_id, body)
+
+
+@compat_router.post("/agent/report")
+async def post_report_compat(request: Request) -> dict:
+    """Compatibility endpoint: agent_id comes from the request body."""
+    body = await request.json()
+    agent_id = body.get("agent_id", "unknown")
+    return await _handle_report(agent_id, body)
 
 
 @router.get("/agents")
