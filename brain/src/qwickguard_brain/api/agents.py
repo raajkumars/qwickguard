@@ -5,9 +5,10 @@ import logging
 
 from fastapi import APIRouter, Request
 
+from ..escalation import escalation_engine
 from ..storage import (
-    get_agents,
     get_agent_history,
+    get_agents,
     get_recent_actions,
     store_report,
 )
@@ -25,6 +26,15 @@ async def post_report(agent_id: str, request: Request) -> dict:
     body["agent_id"] = agent_id
     await store_report(body)
     logger.info("Accepted report from agent %s", agent_id)
+
+    # Check if escalation to Claude is requested
+    analysis = body.get("analysis", {})
+    if analysis.get("escalate_to_claude", False):
+        history = await get_agent_history(agent_id, hours=24)
+        result = await escalation_engine.escalate(agent_id, body, history)
+        if result:
+            return {"status": "accepted", "agent_id": agent_id, "escalation": result}
+
     return {"status": "accepted", "agent_id": agent_id}
 
 
