@@ -5,6 +5,7 @@ Wires together:
 - SQLite database initialisation via storage.init_db
 - Background heartbeat checker via registry.heartbeat_checker
 - Daily data cleanup via storage.cleanup_old_data
+- Daily digest generation via digest.schedule_daily_digest
 """
 from __future__ import annotations
 
@@ -19,6 +20,7 @@ from .storage import cleanup_old_data, init_db
 from .api.health import router as health_router
 from .api.agents import router as agents_router
 from .registry import heartbeat_checker
+from .digest import schedule_daily_digest
 
 logger = logging.getLogger("qwickguard.brain")
 
@@ -40,9 +42,11 @@ async def lifespan(app: FastAPI):
     heartbeat_task = asyncio.create_task(
         heartbeat_checker(timeout_minutes=settings.heartbeat_timeout_minutes)
     )
+    digest_task = asyncio.create_task(schedule_daily_digest())
     yield
     cleanup_task.cancel()
     heartbeat_task.cancel()
+    digest_task.cancel()
 
 
 app = FastAPI(

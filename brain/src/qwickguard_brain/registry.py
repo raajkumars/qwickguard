@@ -1,8 +1,7 @@
 """Background heartbeat checker for QwickGuard Brain Service.
 
-Monitors registered agents and logs a warning when an agent has not
-reported within the configured timeout.  Task 4 will replace
-``_alert_missing_heartbeat`` with real notification dispatch.
+Monitors registered agents and dispatches critical notifications when an
+agent has not reported within the configured timeout.
 """
 from __future__ import annotations
 
@@ -15,22 +14,36 @@ from .storage import get_agents
 logger = logging.getLogger("qwickguard.brain.registry")
 
 
-# Will be replaced with real notification dispatch in Task 4
-async def _alert_missing_heartbeat(agent_id: str, hostname: str, minutes_since: int) -> None:
-    logger.warning(
-        "Agent %s (%s) heartbeat missing for %d minutes",
-        agent_id,
-        hostname,
-        minutes_since,
+async def _alert_missing_heartbeat(
+    agent_id: str, hostname: str, minutes_since: int
+) -> None:
+    """Dispatch a critical notification for a missing heartbeat.
+
+    Uses the notifications module to route the alert to all configured
+    channels (internal storage, GitHub Issues, Slack, Discord).
+    """
+    from .notifications import dispatch_notification
+
+    await dispatch_notification(
+        agent_id=agent_id,
+        severity="critical",
+        title=f"Agent {hostname} heartbeat missing",
+        body=(
+            f"No report received from agent {agent_id} ({hostname}) "
+            f"in {minutes_since} minutes."
+        ),
+        hostname=hostname,
     )
 
 
-async def heartbeat_checker(timeout_minutes: int = 15, interval_seconds: int = 60) -> None:
-    """Check every *interval_seconds* seconds for agents missing heartbeat.
+async def heartbeat_checker(
+    timeout_minutes: int = 15, interval_seconds: int = 60
+) -> None:
+    """Check every interval for agents missing heartbeat beyond timeout.
 
     An agent is considered missing when its last report is older than
-    *timeout_minutes* minutes.  The checker runs indefinitely and is
-    expected to be started as an ``asyncio.Task``.
+    timeout_minutes. The checker runs indefinitely and is expected to be
+    started as an asyncio.Task.
     """
     while True:
         try:
