@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..storage import (
@@ -321,6 +321,19 @@ async def metrics_charts_partial(request: Request, range: str = "24h") -> HTMLRe
         "chart_data": chart_data,
         "range": range,
     })
+
+
+@router.get("/api/metrics/data", response_class=JSONResponse)
+async def metrics_data_json(range: str = "24h") -> JSONResponse:
+    """Return chart data as JSON for in-place chart updates (no page reload)."""
+    agent = await _get_agent()
+    if not agent:
+        return JSONResponse({"timestamps": []})
+
+    hours = _parse_range(range)
+    history = await get_agent_history(agent["agent_id"], hours=hours)
+    chart_data = _prepare_chart_data(history)
+    return JSONResponse(chart_data)
 
 
 # ---------------------------------------------------------------------------

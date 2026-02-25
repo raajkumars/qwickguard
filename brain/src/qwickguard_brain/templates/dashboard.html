@@ -6,10 +6,40 @@
 {% block header_title %}Dashboard{% endblock %}
 
 {% block content %}
+<div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+  <button id="refreshToggle" class="btn btn-outline" onclick="toggleRefresh()" style="font-size:11px; padding:4px 12px;">
+    &#9646;&#9646; Pause
+  </button>
+  <span id="refreshStatus" style="font-size:11px; color:var(--text-dim);">Auto-refresh: 5s</span>
+</div>
+
 <div id="dashboard-content"
      hx-get="/dashboard/partials/overview"
-     hx-trigger="every 60s"
+     hx-trigger="every 5s"
      hx-swap="innerHTML">
   {% include "partials/system_status.html" %}
 </div>
+
+<script>
+let refreshPaused = false;
+function toggleRefresh() {
+  const el = document.getElementById('dashboard-content');
+  const btn = document.getElementById('refreshToggle');
+  const status = document.getElementById('refreshStatus');
+  refreshPaused = !refreshPaused;
+  if (refreshPaused) {
+    el.removeAttribute('hx-trigger');
+    htmx.process(el);
+    btn.innerHTML = '&#9654; Resume';
+    status.textContent = 'Paused';
+    status.style.color = 'var(--accent-orange)';
+  } else {
+    el.setAttribute('hx-trigger', 'every 5s');
+    htmx.process(el);
+    btn.innerHTML = '&#9646;&#9646; Pause';
+    status.textContent = 'Auto-refresh: 5s';
+    status.style.color = 'var(--text-dim)';
+  }
+}
+</script>
 {% endblock %}

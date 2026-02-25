@@ -5,6 +5,31 @@
 {% block header_title %}Notifications{% endblock %}
 
 {% block content %}
+<style>
+  .notif-row { cursor: pointer; }
+  .notif-row:hover td { background: rgba(34, 34, 58, 0.6); }
+  .notif-detail { display: none; }
+  .notif-detail.open { display: table-row; }
+  .notif-body {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    font-family: monospace;
+    padding: 12px 16px;
+    background: rgba(15, 15, 15, 0.5);
+    border-radius: 4px;
+    line-height: 1.6;
+  }
+  .expand-icon {
+    display: inline-block;
+    transition: transform 0.15s;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-right: 6px;
+  }
+  .notif-row.expanded .expand-icon { transform: rotate(90deg); }
+</style>
+
 <!-- Notification History -->
 <div class="card">
   <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
@@ -24,6 +49,7 @@
   <table class="data-table">
     <thead>
       <tr>
+        <th></th>
         <th>Time</th>
         <th>Severity</th>
         <th>Title</th>
@@ -35,7 +61,8 @@
       {% for n in notifications %}
       {% set sev = n.get('severity', 'info') | lower %}
       {% set sev_badge = 'badge-red' if sev == 'critical' else ('badge-orange' if sev == 'warning' else 'badge-blue') %}
-      <tr>
+      <tr class="notif-row" onclick="toggleNotif(this)">
+        <td style="width:16px; padding-right:0;"><span class="expand-icon">&#9654;</span></td>
         <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">
           {{ relative_time(n.get('created_at')) }}
         </td>
@@ -52,7 +79,7 @@
         <td style="font-size:12px; color:var(--text-dim);">
           {% if n.get('external_id') %}
             {% if n.get('channel') == 'github' %}
-              <a href="https://github.com/raajkumars/qwickguard/issues/{{ n.get('external_id') }}" target="_blank" rel="noopener" style="color:var(--accent-blue);">#{{ n.get('external_id') }}</a>
+              <a href="https://github.com/raajkumars/qwickguard/issues/{{ n.get('external_id') }}" target="_blank" rel="noopener" style="color:var(--accent-blue);" onclick="event.stopPropagation();">#{{ n.get('external_id') }}</a>
             {% else %}
               {{ n.get('external_id') }}
             {% endif %}
@@ -61,6 +88,13 @@
           {% endif %}
         </td>
       </tr>
+      {% if n.get('body') %}
+      <tr class="notif-detail">
+        <td colspan="6" style="padding:0 12px 12px 28px;">
+          <div class="notif-body">{{ n.get('body') }}</div>
+        </td>
+      </tr>
+      {% endif %}
       {% endfor %}
     </tbody>
   </table>
@@ -126,4 +160,14 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+function toggleNotif(row) {
+  const detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('notif-detail')) {
+    detail.classList.toggle('open');
+    row.classList.toggle('expanded');
+  }
+}
+</script>
 {% endblock %}

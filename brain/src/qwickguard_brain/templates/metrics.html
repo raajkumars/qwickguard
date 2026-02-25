@@ -5,10 +5,273 @@
 {% block header_title %}Metrics{% endblock %}
 
 {% block content %}
-<div id="metrics-content"
-     hx-get="/metrics/partials/charts?range={{ range }}"
-     hx-trigger="every 60s"
-     hx-swap="innerHTML">
-  {% include "partials/metrics_charts.html" %}
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+  <span style="font-size:13px; color:var(--text-muted);">Time Range:</span>
+  {% for r in ["1h", "6h", "24h", "7d"] %}
+  <a href="/metrics?range={{ r }}"
+     class="btn btn-outline"
+     style="{% if range == r %}border-color:var(--accent-green); color:var(--accent-green);{% endif %}">
+    {{ r }}
+  </a>
+  {% endfor %}
+  <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+    <button id="refreshToggle" class="btn btn-outline" onclick="toggleRefresh()" style="font-size:11px; padding:4px 12px;">
+      &#9646;&#9646; Pause
+    </button>
+    <span id="refreshStatus" style="font-size:11px; color:var(--text-dim);">Auto-refresh: 10s</span>
+  </div>
 </div>
+
+{% if not chart_data.timestamps %}
+<div class="empty-state">
+  <div class="empty-state-icon">&#9650;</div>
+  <div class="empty-state-title">No metrics data yet</div>
+  <div class="empty-state-body">Waiting for agent reports to populate charts.</div>
+</div>
+{% else %}
+
+<style>
+  .chart-container { position: relative; height: 220px; width: 100%; }
+</style>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">CPU Usage (%)</div>
+    <div class="chart-container"><canvas id="cpuChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Memory Usage (%)</div>
+    <div class="chart-container"><canvas id="memChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">Disk Usage (%)</div>
+    <div class="chart-container"><canvas id="diskChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Load Average</div>
+    <div class="chart-container"><canvas id="loadChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">Container Restarts ({{ range }})</div>
+    <div class="chart-container"><canvas id="restartsChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Service Response Times (ms)</div>
+    <div class="chart-container"><canvas id="responseChart"></canvas></div>
+  </div>
+</div>
+
+<script>
+const chartColors = {
+  green: '#16c784',
+  orange: '#f0b90b',
+  red: '#ea3943',
+  blue: '#4da6ff',
+  purple: '#a855f7',
+  cyan: '#22d3ee',
+  grid: 'rgba(42, 42, 68, 0.5)',
+  text: '#8888aa',
+};
+
+const defaultOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 300 },
+  plugins: { legend: { labels: { color: chartColors.text, font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { color: chartColors.text, font: { size: 10 }, maxTicksLimit: 12 }, grid: { color: chartColors.grid } },
+    y: { ticks: { color: chartColors.text, font: { size: 10 } }, grid: { color: chartColors.grid } }
+  }
+};
+
+const data = {{ chart_data | tojson }};
+const currentRange = '{{ range }}';
+
+/* Create all charts and store references for in-place updates */
+const cpuChart = new Chart(document.getElementById('cpuChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [{
+      label: 'CPU %',
+      data: data.cpu,
+      borderColor: chartColors.green,
+      backgroundColor: 'rgba(22, 199, 132, 0.08)',
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
+    }]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
+});
+
+const memChart = new Chart(document.getElementById('memChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [{
+      label: 'RAM %',
+      data: data.memory,
+      borderColor: chartColors.orange,
+      backgroundColor: 'rgba(240, 185, 11, 0.08)',
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
+    }]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
+});
+
+const diskChart = new Chart(document.getElementById('diskChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [{
+      label: 'Disk %',
+      data: data.disk,
+      borderColor: chartColors.blue,
+      backgroundColor: 'rgba(77, 166, 255, 0.08)',
+      fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
+    }]
+  },
+  options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 100 } } }
+});
+
+const loadChart = new Chart(document.getElementById('loadChart'), {
+  type: 'line',
+  data: {
+    labels: data.timestamps,
+    datasets: [
+      { label: '1m', data: data.load_1m, borderColor: chartColors.green, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+      { label: '5m', data: data.load_5m, borderColor: chartColors.orange, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+      { label: '15m', data: data.load_15m, borderColor: chartColors.red, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+    ]
+  },
+  options: defaultOpts
+});
+
+let restartsChart = null;
+if (data.container_restarts && data.container_restarts.names.length > 0) {
+  restartsChart = new Chart(document.getElementById('restartsChart'), {
+    type: 'bar',
+    data: {
+      labels: data.container_restarts.names,
+      datasets: [{
+        label: 'Restarts',
+        data: data.container_restarts.counts,
+        backgroundColor: chartColors.red + '88',
+        borderColor: chartColors.red, borderWidth: 1,
+      }]
+    },
+    options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, beginAtZero: true } } }
+  });
+} else {
+  document.getElementById('restartsChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px;">No restarts in this period</div>';
+}
+
+let responseChart = null;
+const svcColors = [chartColors.green, chartColors.orange, chartColors.blue, chartColors.purple, chartColors.cyan, chartColors.red];
+if (data.service_response && data.service_response.length > 0) {
+  responseChart = new Chart(document.getElementById('responseChart'), {
+    type: 'line',
+    data: {
+      labels: data.timestamps,
+      datasets: data.service_response.map((svc, i) => ({
+        label: svc.name,
+        data: svc.times,
+        borderColor: svcColors[i % svcColors.length],
+        tension: 0.3, pointRadius: 0, borderWidth: 2,
+      }))
+    },
+    options: defaultOpts
+  });
+} else {
+  document.getElementById('responseChart').parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:13px;">No service data</div>';
+}
+
+/* --- Auto-refresh via JSON fetch + Chart.update() --- */
+let refreshInterval = null;
+let refreshPaused = false;
+
+function updateCharts(newData) {
+  /* Update line charts in place */
+  cpuChart.data.labels = newData.timestamps;
+  cpuChart.data.datasets[0].data = newData.cpu;
+  cpuChart.update();
+
+  memChart.data.labels = newData.timestamps;
+  memChart.data.datasets[0].data = newData.memory;
+  memChart.update();
+
+  diskChart.data.labels = newData.timestamps;
+  diskChart.data.datasets[0].data = newData.disk;
+  diskChart.update();
+
+  loadChart.data.labels = newData.timestamps;
+  loadChart.data.datasets[0].data = newData.load_1m;
+  loadChart.data.datasets[1].data = newData.load_5m;
+  loadChart.data.datasets[2].data = newData.load_15m;
+  loadChart.update();
+
+  /* Restarts bar chart */
+  if (restartsChart && newData.container_restarts) {
+    restartsChart.data.labels = newData.container_restarts.names;
+    restartsChart.data.datasets[0].data = newData.container_restarts.counts;
+    restartsChart.update();
+  }
+
+  /* Service response chart */
+  if (responseChart && newData.service_response) {
+    responseChart.data.labels = newData.timestamps;
+    responseChart.data.datasets = newData.service_response.map((svc, i) => ({
+      label: svc.name,
+      data: svc.times,
+      borderColor: svcColors[i % svcColors.length],
+      tension: 0.3, pointRadius: 0, borderWidth: 2,
+    }));
+    responseChart.update();
+  }
+}
+
+async function fetchAndUpdate() {
+  try {
+    const resp = await fetch('/api/metrics/data?range=' + currentRange);
+    if (resp.ok) {
+      const newData = await resp.json();
+      updateCharts(newData);
+    }
+  } catch (e) {
+    /* Silently skip on network error */
+  }
+}
+
+function startRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(fetchAndUpdate, 10000);
+}
+
+function toggleRefresh() {
+  const btn = document.getElementById('refreshToggle');
+  const status = document.getElementById('refreshStatus');
+  refreshPaused = !refreshPaused;
+  if (refreshPaused) {
+    clearInterval(refreshInterval);
+    refreshInterval = null;
+    btn.innerHTML = '&#9654; Resume';
+    status.textContent = 'Paused';
+    status.style.color = 'var(--accent-orange)';
+  } else {
+    startRefresh();
+    btn.innerHTML = '&#9646;&#9646; Pause';
+    status.textContent = 'Auto-refresh: 10s';
+    status.style.color = 'var(--text-dim)';
+  }
+}
+
+startRefresh();
+</script>
+
+{% endif %}
 {% endblock %}
