@@ -1,0 +1,272 @@
+{% if not agent %}
+<div class="empty-state">
+  <div class="empty-state-icon">&#9832;</div>
+  <div class="empty-state-title">Waiting for first agent report...</div>
+  <div class="empty-state-body">No agents have connected yet. Deploy an agent to get started.</div>
+</div>
+{% else %}
+
+{# Determine status colors #}
+{% set status = report.get('analysis', {}).get('status', agent.last_status or 'unknown') if report else (agent.last_status or 'unknown') %}
+{% set status_badge = 'badge-green' if status == 'healthy' else ('badge-orange' if status == 'warning' else ('badge-red' if status == 'critical' else 'badge-gray')) %}
+
+{# Metrics shortcut #}
+{% set metrics = report.get('metrics', {}) if report else {} %}
+{% set cpu = metrics.get('cpu_percent', 0) %}
+{% set mem = metrics.get('memory_percent', 0) %}
+{% set disk = metrics.get('disk_percent', 0) %}
+{% set containers = metrics.get('containers', []) %}
+{% set services = metrics.get('services', []) %}
+
+{# Analysis #}
+{% set analysis = report.get('analysis', {}) if report else {} %}
+
+<!-- Row 1: Agent status card -->
+<div class="card">
+  <div class="card-title">Agent Status</div>
+  <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+    <div>
+      <div style="font-size:22px; font-weight:700; color:var(--text-primary);">{{ agent.hostname }}</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">{{ agent.agent_id }}</div>
+    </div>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="text-align:right;">
+        <div style="font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Last Report</div>
+        <div style="font-size:14px; color:var(--text-primary); margin-top:2px;">
+          {{ relative_time(agent.last_report_at) }}
+        </div>
+      </div>
+      <span class="badge {{ status_badge }}" style="font-size:12px; padding:4px 12px;">{{ status }}</span>
+    </div>
+  </div>
+  {% if analysis.get('issues') %}
+  <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px;">
+    {% for issue in analysis.get('issues', []) %}
+    <div style="font-size:12.5px; color:var(--text-muted); padding:2px 0;">
+      {% if issue is mapping %}
+        <span class="badge {% if issue.get('severity') == 'critical' %}badge-red{% elif issue.get('severity') == 'warning' %}badge-orange{% else %}badge-gray{% endif %}" style="margin-right:6px;">{{ issue.get('severity', 'info') }}</span>
+        {{ issue.get('description', issue) }}
+      {% else %}
+        {{ issue }}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Row 2: System metrics -->
+<div class="grid-3 mt-16">
+  {# CPU card #}
+  {% set cpu_color = 'var(--accent-green)' if cpu < 70 else ('var(--accent-orange)' if cpu < 85 else 'var(--accent-red)') %}
+  <div class="card" style="text-align:center;">
+    <div class="card-title">CPU Usage</div>
+    <div style="position:relative; width:100px; height:100px; margin:0 auto 12px;">
+      <svg viewBox="0 0 36 36" style="transform:rotate(-90deg); width:100px; height:100px;">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="2.5"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="{{ cpu_color }}" stroke-width="2.5"
+          stroke-dasharray="{{ (cpu | round(1)) }}, 100"
+          stroke-linecap="round"/>
+      </svg>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;color:{{ cpu_color }};">
+        {{ cpu | round(0) | int }}%
+      </div>
+    </div>
+    {% if metrics.get('load_avg_1m') is not none %}
+    <div style="font-size:11.5px; color:var(--text-dim);">
+      Load: {{ metrics.get('load_avg_1m', 0) | round(2) }} / {{ metrics.get('load_avg_5m', 0) | round(2) }} / {{ metrics.get('load_avg_15m', 0) | round(2) }}
+    </div>
+    {% endif %}
+  </div>
+
+  {# RAM card #}
+  {% set mem_color = 'var(--accent-green)' if mem < 70 else ('var(--accent-orange)' if mem < 85 else 'var(--accent-red)') %}
+  <div class="card" style="text-align:center;">
+    <div class="card-title">Memory Usage</div>
+    <div style="position:relative; width:100px; height:100px; margin:0 auto 12px;">
+      <svg viewBox="0 0 36 36" style="transform:rotate(-90deg); width:100px; height:100px;">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="2.5"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="{{ mem_color }}" stroke-width="2.5"
+          stroke-dasharray="{{ (mem | round(1)) }}, 100"
+          stroke-linecap="round"/>
+      </svg>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;color:{{ mem_color }};">
+        {{ mem | round(0) | int }}%
+      </div>
+    </div>
+    <div style="font-size:11.5px; color:var(--text-dim);">RAM</div>
+  </div>
+
+  {# Disk card #}
+  {% set disk_color = 'var(--accent-green)' if disk < 70 else ('var(--accent-orange)' if disk < 85 else 'var(--accent-red)') %}
+  <div class="card" style="text-align:center;">
+    <div class="card-title">Disk Usage</div>
+    <div style="position:relative; width:100px; height:100px; margin:0 auto 12px;">
+      <svg viewBox="0 0 36 36" style="transform:rotate(-90deg); width:100px; height:100px;">
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="2.5"/>
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="{{ disk_color }}" stroke-width="2.5"
+          stroke-dasharray="{{ (disk | round(1)) }}, 100"
+          stroke-linecap="round"/>
+      </svg>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;color:{{ disk_color }};">
+        {{ disk | round(0) | int }}%
+      </div>
+    </div>
+    {% if metrics.get('disk_used_gb') is not none and metrics.get('disk_total_gb') is not none %}
+    <div style="font-size:11.5px; color:var(--text-dim);">
+      {{ metrics.get('disk_used_gb', 0) | round(1) }} / {{ metrics.get('disk_total_gb', 0) | round(1) }} GB
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Row 3: Container status + Service health -->
+<div class="grid-2 mt-16">
+
+  <!-- Container Status -->
+  <div class="card">
+    <div class="card-title">Container Status</div>
+    {% if containers %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Health</th>
+          <th>Restarts</th>
+          <th>CPU%</th>
+          <th>Mem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in containers %}
+        {% set c_status = c.get('status', 'unknown') | lower %}
+        {% set c_badge = 'badge-green' if c_status == 'running' else ('badge-red' if c_status == 'exited' else 'badge-gray') %}
+        <tr>
+          <td style="font-family:monospace; font-size:12px; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ c.get('name', '—') }}</td>
+          <td><span class="badge {{ c_badge }}">{{ c_status }}</span></td>
+          <td>
+            {% set health = c.get('health', '') | lower %}
+            {% if health %}
+              <span class="badge {% if health == 'healthy' %}badge-green{% elif health == 'unhealthy' %}badge-red{% else %}badge-gray{% endif %}">{{ health }}</span>
+            {% else %}
+              <span style="color:var(--text-dim);">—</span>
+            {% endif %}
+          </td>
+          <td style="color:{% if c.get('restarts', 0) > 0 %}var(--accent-orange){% else %}var(--text-muted){% endif %};">
+            {{ c.get('restarts', 0) }}
+          </td>
+          <td>{{ c.get('cpu_percent', 0) | round(1) }}%</td>
+          <td>
+            {% if c.get('memory_mb') is not none %}
+              {{ c.get('memory_mb') | round(0) | int }}MB
+            {% else %}
+              <span style="color:var(--text-dim);">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div style="padding:20px 0; text-align:center; color:var(--text-muted); font-size:13px;">No container data</div>
+    {% endif %}
+  </div>
+
+  <!-- Service Health -->
+  <div class="card">
+    <div class="card-title">Service Health</div>
+    {% if services %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Response</th>
+          <th>URL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in services %}
+        {% set healthy = s.get('healthy', False) %}
+        <tr>
+          <td>{{ s.get('name', '—') }}</td>
+          <td>
+            <span class="badge {% if healthy %}badge-green{% else %}badge-red{% endif %}">
+              {% if healthy %}healthy{% else %}unhealthy{% endif %}
+            </span>
+          </td>
+          <td style="color:{% if s.get('response_time_ms', 0) > 1000 %}var(--accent-orange){% else %}var(--text-muted){% endif %}; font-size:12.5px;">
+            {% if s.get('response_time_ms') is not none %}
+              {{ s.get('response_time_ms') | round(0) | int }}ms
+            {% else %}
+              <span style="color:var(--text-dim);">—</span>
+            {% endif %}
+          </td>
+          <td style="font-size:11.5px; color:var(--text-dim); max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ s.get('url', '—') }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div style="padding:20px 0; text-align:center; color:var(--text-muted); font-size:13px;">No service data</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Row 4: Recent actions feed -->
+<div class="card mt-16">
+  <div class="card-title">Recent Actions</div>
+  {% if actions %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Action</th>
+        <th>Target</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in actions[:10] %}
+      {% set result = a.get('result', a.get('status', 'unknown')) | lower %}
+      {% set result_badge = 'badge-green' if result in ('success', 'ok') else ('badge-red' if result == 'failed' else ('badge-orange' if result == 'cooldown' else 'badge-gray')) %}
+      <tr>
+        <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">
+          {{ relative_time(a.get('timestamp')) }}
+        </td>
+        <td style="font-size:12.5px; font-family:monospace;">{{ a.get('action', a.get('name', '—')) }}</td>
+        <td style="font-size:12px; color:var(--text-muted);">{{ a.get('target', a.get('container', '—')) }}</td>
+        <td><span class="badge {{ result_badge }}">{{ result }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:20px 0; text-align:center; color:var(--text-muted); font-size:13px;">No recent actions</div>
+  {% endif %}
+</div>
+
+<!-- Row 5: Quick links -->
+<div class="mt-16" style="display:flex; gap:12px; flex-wrap:wrap;">
+  <a class="btn btn-outline"
+     href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8090' }}"
+     target="_blank" rel="noopener">
+    &#9760; Beszel
+  </a>
+  <a class="btn btn-outline"
+     href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':9000' }}"
+     target="_blank" rel="noopener">
+    &#9881; Portainer
+  </a>
+  <a class="btn btn-outline"
+     href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8888' }}"
+     target="_blank" rel="noopener">
+    &#9646; Dozzle
+  </a>
+</div>
+
+{% endif %}

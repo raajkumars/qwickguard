@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% set active_page = "dashboard" %}
+
+{% block title %}Dashboard — QwickGuard{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div id="dashboard-content"
+     hx-get="/dashboard/partials/overview"
+     hx-trigger="every 300s"
+     hx-swap="innerHTML">
+  {% include "partials/system_status.html" %}
+</div>
+{% endblock %}
