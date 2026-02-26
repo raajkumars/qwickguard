@@ -1,0 +1,27 @@
+# QwickGuard Server Configuration
+# oci-ci - Oracle Cloud CI infrastructure (Ubuntu 22.04 ARM)
+hostname: oci-ci
+agent_id: oci-ci-1
+brain_url: http://localhost:8500
+compute_worker_url: http://localhost:8001
+
+check_interval_seconds: 300  # 5 minutes
+
+thresholds:
+  cpu_warning: 80
+  cpu_critical: 95
+  ram_warning: 85
+  ram_critical: 95
+  disk_warning: 80
+  disk_critical: 90
+
+containers: []
+
+services: []
+
+backups: []
+
+github_runners: []
+
+zombie_patterns:
+  - "qwickapps-test-"
