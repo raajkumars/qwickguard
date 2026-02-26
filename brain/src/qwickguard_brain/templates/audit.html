@@ -10,6 +10,7 @@
   <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
     <span style="font-size:13px; color:var(--text-muted); font-weight:600;">Filters:</span>
     <form id="audit-filters" method="get" action="/audit" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      {% if selected_agent_id %}<input type="hidden" name="agent_id" value="{{ selected_agent_id }}">{% endif %}
       <select name="action" onchange="this.form.submit()" style="background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px;">
         <option value="">All Actions</option>
         {% for a in available_actions %}
@@ -23,7 +24,7 @@
         {% endfor %}
       </select>
       {% if filters.action or filters.result %}
-      <a href="/audit" class="btn btn-outline" style="font-size:12px; padding:5px 10px;">Clear</a>
+      <a href="/audit{% if selected_agent_id %}?agent_id={{ selected_agent_id }}{% endif %}" class="btn btn-outline" style="font-size:12px; padding:5px 10px;">Clear</a>
       {% endif %}
     </form>
     <span style="margin-left:auto; font-size:12px; color:var(--text-dim);">{{ actions | length }} action(s)</span>
@@ -70,7 +71,7 @@
 
   {% if has_more %}
   <div style="text-align:center; padding:16px 0;">
-    <a href="/audit?page={{ page + 1 }}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.result %}&result={{ filters.result }}{% endif %}"
+    <a href="/audit?page={{ page + 1 }}{% if selected_agent_id %}&agent_id={{ selected_agent_id }}{% endif %}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.result %}&result={{ filters.result }}{% endif %}"
        class="btn btn-outline">Load more</a>
   </div>
   {% endif %}
