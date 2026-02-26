@@ -1,0 +1,32 @@
+# QwickGuard Server Configuration
+# oci-main - Oracle Cloud primary app server (Ubuntu 22.04 ARM, 2 OCPU, 18GB RAM)
+hostname: oci-main
+agent_id: oci-main-1
+brain_url: http://100.100.236.12:8500  # macmini-devserver via Tailscale
+compute_worker_url: http://localhost:8001
+
+check_interval_seconds: 300  # 5 minutes
+
+thresholds:
+  cpu_warning: 80
+  cpu_critical: 95
+  ram_warning: 85
+  ram_critical: 95
+  disk_warning: 80
+  disk_critical: 90
+
+# Note: CapRover uses Docker Swarm; container names include dynamic suffixes
+# (e.g. srv-captain--faabzi.1.<hash>). Container monitoring skipped for now.
+# TODO: Add prefix-matching support to the Docker collector for Swarm services.
+containers: []
+
+services:
+  - name: faabzi
+    url: http://localhost:80/
+    critical: true
+
+backups: []
+
+github_runners: []
+
+zombie_patterns: []
