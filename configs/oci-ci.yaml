@@ -2,7 +2,7 @@
 # oci-ci - Oracle Cloud CI infrastructure (Ubuntu 22.04 ARM)
 hostname: oci-ci
 agent_id: oci-ci-1
-brain_url: http://localhost:8500
+brain_url: http://100.100.236.12:8500  # macmini-devserver via Tailscale
 compute_worker_url: http://localhost:8001
 
 check_interval_seconds: 300  # 5 minutes
