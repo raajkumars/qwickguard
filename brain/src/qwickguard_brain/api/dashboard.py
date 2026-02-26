@@ -225,15 +225,28 @@ def _render_markdown(text: str) -> str:
 # Common context builder
 # ---------------------------------------------------------------------------
 
-async def _get_agent() -> dict[str, Any] | None:
-    """Get the first (primary) agent."""
+async def _get_agent(agent_id: str | None = None) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """Get the selected agent and the full agents list.
+
+    If *agent_id* is provided, look it up.  Otherwise fall back to the first
+    registered agent (backward-compatible default).
+
+    Returns ``(selected_agent, all_agents)``.
+    """
     agents = await get_agents()
-    return agents[0] if agents else None
+    if not agents:
+        return None, []
+    if agent_id:
+        for a in agents:
+            if a["agent_id"] == agent_id:
+                return a, agents
+    return agents[0], agents
 
 
 async def _build_template_context(request: Request) -> dict[str, Any]:
     """Fetch agent data and assemble the Jinja2 template context dict."""
-    agent = await _get_agent()
+    agent_id = request.query_params.get("agent_id")
+    agent, agents = await _get_agent(agent_id)
 
     report: dict[str, Any] = {}
     actions: list[dict[str, Any]] = []
@@ -246,6 +259,8 @@ async def _build_template_context(request: Request) -> dict[str, Any]:
     return {
         "request": request,
         "agent": agent,
+        "agents": agents,
+        "selected_agent_id": agent["agent_id"] if agent else "",
         "report": report,
         "actions": actions,
         "relative_time": _relative_time,
@@ -276,13 +291,15 @@ async def overview_partial(request: Request) -> HTMLResponse:
 # ---------------------------------------------------------------------------
 
 @router.get("/metrics", response_class=HTMLResponse)
-async def metrics_page(request: Request, range: str = "24h") -> HTMLResponse:
+async def metrics_page(request: Request, range: str = "24h", agent_id: str | None = None) -> HTMLResponse:
     """Render the metrics charts page with historical data."""
-    agent = await _get_agent()
+    agent, agents = await _get_agent(agent_id)
     if not agent:
         return templates.TemplateResponse("metrics.html", {
             "request": request,
             "agent": None,
+            "agents": [],
+            "selected_agent_id": "",
             "chart_data": {"timestamps": []},
             "range": range,
         })
@@ -294,15 +311,17 @@ async def metrics_page(request: Request, range: str = "24h") -> HTMLResponse:
     return templates.TemplateResponse("metrics.html", {
         "request": request,
         "agent": agent,
+        "agents": agents,
+        "selected_agent_id": agent["agent_id"],
         "chart_data": chart_data,
         "range": range,
     })
 
 
 @router.get("/metrics/partials/charts", response_class=HTMLResponse)
-async def metrics_charts_partial(request: Request, range: str = "24h") -> HTMLResponse:
+async def metrics_charts_partial(request: Request, range: str = "24h", agent_id: str | None = None) -> HTMLResponse:
     """Return the inner metrics charts content fragment for HTMX auto-refresh."""
-    agent = await _get_agent()
+    agent, _agents = await _get_agent(agent_id)
     if not agent:
         return templates.TemplateResponse("partials/metrics_charts.html", {
             "request": request,
@@ -324,9 +343,9 @@ async def metrics_charts_partial(request: Request, range: str = "24h") -> HTMLRe
 
 
 @router.get("/api/metrics/data", response_class=JSONResponse)
-async def metrics_data_json(range: str = "24h") -> JSONResponse:
+async def metrics_data_json(range: str = "24h", agent_id: str | None = None) -> JSONResponse:
     """Return chart data as JSON for in-place chart updates (no page reload)."""
-    agent = await _get_agent()
+    agent, _agents = await _get_agent(agent_id)
     if not agent:
         return JSONResponse({"timestamps": []})
 
@@ -346,9 +365,10 @@ async def audit_page(
     action: str | None = None,
     result: str | None = None,
     page: int = 1,
+    agent_id: str | None = None,
 ) -> HTMLResponse:
     """Render the audit log page with filterable action history."""
-    agent = await _get_agent()
+    agent, agents = await _get_agent(agent_id)
     all_actions: list[dict[str, Any]] = []
 
     if agent:
@@ -374,6 +394,8 @@ async def audit_page(
     return templates.TemplateResponse("audit.html", {
         "request": request,
         "agent": agent,
+        "agents": agents,
+        "selected_agent_id": agent["agent_id"] if agent else "",
         "actions": page_actions,
         "available_actions": available_actions,
         "filters": {"action": action or "", "result": result or ""},
@@ -388,21 +410,23 @@ async def audit_page(
 # ---------------------------------------------------------------------------
 
 @router.get("/runbooks", response_class=HTMLResponse)
-async def runbooks_list(request: Request) -> HTMLResponse:
+async def runbooks_list(request: Request, agent_id: str | None = None) -> HTMLResponse:
     """List all available runbooks."""
-    agent = await _get_agent()
+    agent, agents = await _get_agent(agent_id)
     runbooks = _scan_runbooks(_RUNBOOKS_DIR)
     return templates.TemplateResponse("runbooks.html", {
         "request": request,
         "agent": agent,
+        "agents": agents,
+        "selected_agent_id": agent["agent_id"] if agent else "",
         "runbooks": runbooks,
     })
 
 
 @router.get("/runbooks/{filename}", response_class=HTMLResponse)
-async def runbook_detail(request: Request, filename: str) -> HTMLResponse:
+async def runbook_detail(request: Request, filename: str, agent_id: str | None = None) -> HTMLResponse:
     """Render a single runbook as HTML."""
-    agent = await _get_agent()
+    agent, agents = await _get_agent(agent_id)
 
     # Sanitize filename to prevent directory traversal
     safe_name = Path(filename).name
@@ -421,6 +445,8 @@ async def runbook_detail(request: Request, filename: str) -> HTMLResponse:
     return templates.TemplateResponse("runbook_detail.html", {
         "request": request,
         "agent": agent,
+        "agents": agents,
+        "selected_agent_id": agent["agent_id"] if agent else "",
         "content": html_content,
         "title": title,
         "filename": safe_name,
@@ -435,11 +461,13 @@ async def runbook_detail(request: Request, filename: str) -> HTMLResponse:
 async def notifications_page(
     request: Request,
     severity: str | None = None,
+    agent_id: str | None = None,
 ) -> HTMLResponse:
     """Render notification history and escalation log."""
-    agent = await _get_agent()
-    notifications = await get_recent_notifications(limit=100, severity=severity)
-    escalations = await get_recent_escalations(limit=50)
+    agent, agents = await _get_agent(agent_id)
+    selected_id = agent["agent_id"] if agent else None
+    notifications = await get_recent_notifications(limit=100, severity=severity, agent_id=selected_id)
+    escalations = await get_recent_escalations(agent_id=selected_id, limit=50)
 
     # Parse Claude response JSON in escalations
     for esc in escalations:
@@ -457,6 +485,8 @@ async def notifications_page(
     return templates.TemplateResponse("notifications.html", {
         "request": request,
         "agent": agent,
+        "agents": agents,
+        "selected_agent_id": agent["agent_id"] if agent else "",
         "notifications": notifications,
         "escalations": escalations,
         "severity_filter": severity or "",

@@ -138,12 +138,6 @@
       opacity: 0.8;
     }
 
-    .sidebar-external-link::after {
-      content: " ↗";
-      font-size: 10px;
-      opacity: 0.5;
-    }
-
     .sidebar-spacer {
       flex: 1;
     }
@@ -408,56 +402,63 @@
     </div>
   </div>
 
+  {% if agents is defined and agents | length > 1 %}
+  <div class="sidebar-section" style="padding-bottom:0;">
+    <div class="sidebar-section-label">Agent</div>
+    <div style="padding:0 8px;">
+      <select id="agent-selector"
+              onchange="switchAgent(this.value)"
+              style="width:100%; background:var(--bg-primary); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:12.5px; cursor:pointer;">
+        {% for a in agents %}
+        <option value="{{ a.agent_id }}" {% if a.agent_id == selected_agent_id %}selected{% endif %}>
+          {{ a.hostname }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <script>
+  function switchAgent(agentId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('agent_id', agentId);
+    window.location.href = url.toString();
+  }
+  </script>
+  {% endif %}
+
   <div class="sidebar-section">
     <div class="sidebar-section-label">Navigation</div>
+    {% set qs = '?agent_id=' ~ selected_agent_id if selected_agent_id is defined and selected_agent_id else '' %}
     <ul class="sidebar-nav">
       <li>
-        <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">
+        <a href="/{{ qs }}" class="{% if active_page == 'dashboard' %}active{% endif %}">
           <span class="nav-icon">&#9632;</span> Dashboard
         </a>
       </li>
       <li>
-        <a href="/metrics" class="{% if active_page == 'metrics' %}active{% endif %}">
+        <a href="/metrics{{ qs }}" class="{% if active_page == 'metrics' %}active{% endif %}">
           <span class="nav-icon">&#9650;</span> Metrics
         </a>
       </li>
       <li>
-        <a href="/audit" class="{% if active_page == 'audit' %}active{% endif %}">
+        <a href="/audit{{ qs }}" class="{% if active_page == 'audit' %}active{% endif %}">
           <span class="nav-icon">&#9776;</span> Audit Log
         </a>
       </li>
       <li>
-        <a href="/runbooks" class="{% if active_page == 'runbooks' %}active{% endif %}">
-          <span class="nav-icon">&#9998;</span> Runbooks
-        </a>
-      </li>
-      <li>
-        <a href="/notifications" class="{% if active_page == 'notifications' %}active{% endif %}">
+        <a href="/notifications{{ qs }}" class="{% if active_page == 'notifications' %}active{% endif %}">
           <span class="nav-icon">&#9993;</span> Notifications
         </a>
       </li>
     </ul>
   </div>
 
-  <div class="sidebar-section mt-16">
-    <div class="sidebar-section-label">External Tools</div>
+  <div class="sidebar-section" style="border-top:1px solid var(--border); padding-top:12px;">
+    <div class="sidebar-section-label">Resources</div>
     <ul class="sidebar-nav">
       <li>
-        <a href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8090' }}"
-           target="_blank" rel="noopener" class="sidebar-external-link">
-          <span class="nav-icon">&#9760;</span> Beszel
-        </a>
-      </li>
-      <li>
-        <a href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':9000' }}"
-           target="_blank" rel="noopener" class="sidebar-external-link">
-          <span class="nav-icon">&#9881;</span> Portainer
-        </a>
-      </li>
-      <li>
-        <a href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8888' }}"
-           target="_blank" rel="noopener" class="sidebar-external-link">
-          <span class="nav-icon">&#9646;</span> Dozzle
+        <a href="/runbooks{{ qs }}" class="{% if active_page == 'runbooks' %}active{% endif %}">
+          <span class="nav-icon">&#9998;</span> Runbooks
         </a>
       </li>
     </ul>

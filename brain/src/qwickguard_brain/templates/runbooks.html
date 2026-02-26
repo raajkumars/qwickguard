@@ -8,7 +8,7 @@
 {% if runbooks %}
 <div class="grid-2">
   {% for rb in runbooks %}
-  <a href="/runbooks/{{ rb.filename }}" class="card" style="text-decoration:none; transition:border-color 0.15s;">
+  <a href="/runbooks/{{ rb.filename }}{% if selected_agent_id %}?agent_id={{ selected_agent_id }}{% endif %}" class="card" style="text-decoration:none; transition:border-color 0.15s;">
     <div class="card-title" style="margin-bottom:8px;">{{ rb.title }}</div>
     {% if rb.severity %}
     <span class="badge {% if rb.severity == 'critical' %}badge-red{% elif rb.severity == 'warning' %}badge-orange{% else %}badge-gray{% endif %}" style="margin-bottom:8px;">

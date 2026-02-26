@@ -23,7 +23,8 @@ let refreshPaused = false;
 
 async function refreshDashboard() {
   try {
-    const resp = await fetch('/dashboard/partials/overview');
+    const agentParam = '{{ selected_agent_id }}' ? '?agent_id={{ selected_agent_id }}' : '';
+    const resp = await fetch('/dashboard/partials/overview' + agentParam);
     if (resp.ok) {
       document.getElementById('dashboard-content').innerHTML = await resp.text();
     }

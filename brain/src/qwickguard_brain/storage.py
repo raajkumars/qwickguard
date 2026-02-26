@@ -188,32 +188,28 @@ async def get_recent_actions(agent_id: str, limit: int = 100) -> list[dict[str, 
 
 
 async def get_recent_notifications(
-    limit: int = 50, severity: str | None = None
+    limit: int = 50,
+    severity: str | None = None,
+    agent_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Return recent notifications, optionally filtered by severity."""
+    """Return recent notifications, optionally filtered by severity and agent."""
+    clauses: list[str] = []
+    params: list[Any] = []
+    if severity:
+        clauses.append("severity = ?")
+        params.append(severity)
+    if agent_id:
+        clauses.append("agent_id = ?")
+        params.append(agent_id)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    params.append(limit)
     async with aiosqlite.connect(_db_path) as db:
         db.row_factory = aiosqlite.Row
-        if severity:
-            async with db.execute(
-                """
-                SELECT * FROM notifications
-                WHERE severity = ?
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (severity, limit),
-            ) as cursor:
-                rows = await cursor.fetchall()
-        else:
-            async with db.execute(
-                """
-                SELECT * FROM notifications
-                ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (limit,),
-            ) as cursor:
-                rows = await cursor.fetchall()
+        async with db.execute(
+            f"SELECT * FROM notifications {where} ORDER BY created_at DESC LIMIT ?",
+            params,
+        ) as cursor:
+            rows = await cursor.fetchall()
     return [dict(row) for row in rows]
 
 

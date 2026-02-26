@@ -6,7 +6,7 @@
 
 {% block content %}
 <div style="margin-bottom:16px;">
-  <a href="/runbooks" class="btn btn-outline" style="font-size:12px;">&#8592; Back to Runbooks</a>
+  <a href="/runbooks{% if selected_agent_id %}?agent_id={{ selected_agent_id }}{% endif %}" class="btn btn-outline" style="font-size:12px;">&#8592; Back to Runbooks</a>
 </div>
 
 <div class="card">
