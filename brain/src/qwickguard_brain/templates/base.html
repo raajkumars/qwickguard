@@ -138,12 +138,6 @@
       opacity: 0.8;
     }
 
-    .sidebar-external-link::after {
-      content: " ↗";
-      font-size: 10px;
-      opacity: 0.5;
-    }
-
     .sidebar-spacer {
       flex: 1;
     }
@@ -459,30 +453,6 @@
       <li>
         <a href="/notifications{{ qs }}" class="{% if active_page == 'notifications' %}active{% endif %}">
           <span class="nav-icon">&#9993;</span> Notifications
-        </a>
-      </li>
-    </ul>
-  </div>
-
-  <div class="sidebar-section mt-16">
-    <div class="sidebar-section-label">External Tools</div>
-    <ul class="sidebar-nav">
-      <li>
-        <a href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8090' }}"
-           target="_blank" rel="noopener" class="sidebar-external-link">
-          <span class="nav-icon">&#9760;</span> Beszel
-        </a>
-      </li>
-      <li>
-        <a href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':9000' }}"
-           target="_blank" rel="noopener" class="sidebar-external-link">
-          <span class="nav-icon">&#9881;</span> Portainer
-        </a>
-      </li>
-      <li>
-        <a href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8888' }}"
-           target="_blank" rel="noopener" class="sidebar-external-link">
-          <span class="nav-icon">&#9646;</span> Dozzle
         </a>
       </li>
     </ul>
