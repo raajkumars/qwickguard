@@ -12,7 +12,7 @@ echo "=== QwickGuard Agent Installer (Linux) ==="
 
 # 1. Create directory structure
 echo "[1/6] Creating directories..."
-mkdir -p "$QG_HOME"/{logs,backups,scripts,flags,report_queue}
+mkdir -p "$QG_HOME"/{logs,backups/faabzi-postgres,backups/qwickbrain-postgres,scripts,flags,report_queue}
 
 # 2. Create Python venv and install
 echo "[2/6] Setting up Python environment..."
@@ -24,7 +24,7 @@ for py in python3.13 python3.12 python3.11; do
     fi
 done
 if [ -z "$PYTHON3" ]; then
-    echo "ERROR: Python 3.11+ required. Install via: sudo apt install python3.11 python3.11-venv"
+    echo "ERROR: Python 3.11+ required. Install python3.11 and python3.11-venv via your package manager."
     exit 1
 fi
 echo "  Using $PYTHON3 ($($PYTHON3 --version))"
@@ -64,12 +64,16 @@ fi
 
 # 6. Enable and start agent
 echo "[6/6] Starting agent..."
+if ! systemctl --user status &>/dev/null; then
+    echo "ERROR: systemd user session not available. Is systemd running?"
+    exit 1
+fi
 systemctl --user daemon-reload
 systemctl --user enable --now "$SERVICE_NAME"
 
 echo ""
 echo "=== Installation complete ==="
-echo "Agent status: $(systemctl --user is-active $SERVICE_NAME 2>/dev/null || echo 'checking...')"
+echo "Agent status: $(systemctl --user is-active "$SERVICE_NAME" 2>/dev/null || echo 'checking...')"
 echo "Logs: journalctl --user -u $SERVICE_NAME -f"
 echo "Config: $CONFIG_PATH"
 echo "Venv: $VENV_PATH"

@@ -1,13 +1,14 @@
 [Unit]
 Description=QwickGuard Agent - Infrastructure monitoring and guard service
-After=network-online.target docker.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 ExecStart=__VENV_PATH__/bin/qwickguard-agent
+WorkingDirectory=%h
 Environment=QWICKGUARD_CONFIG=__CONFIG_PATH__
-Environment=PATH=__VENV_PATH__/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=__VENV_PATH__/bin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 Restart=on-failure
 RestartSec=30
 StandardOutput=journal
