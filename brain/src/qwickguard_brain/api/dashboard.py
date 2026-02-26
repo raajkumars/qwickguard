@@ -465,8 +465,9 @@ async def notifications_page(
 ) -> HTMLResponse:
     """Render notification history and escalation log."""
     agent, agents = await _get_agent(agent_id)
-    notifications = await get_recent_notifications(limit=100, severity=severity)
-    escalations = await get_recent_escalations(limit=50)
+    selected_id = agent["agent_id"] if agent else None
+    notifications = await get_recent_notifications(limit=100, severity=severity, agent_id=selected_id)
+    escalations = await get_recent_escalations(agent_id=selected_id, limit=50)
 
     # Parse Claude response JSON in escalations
     for esc in escalations:
