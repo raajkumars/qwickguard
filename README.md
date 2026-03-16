@@ -92,9 +92,34 @@ qwickguard/
 
 ### Deploy monitoring stack
 
+**Docker:**
 ```bash
 ssh macmini-devserver 'cd ~/Projects/qwickguard && git pull && docker compose up -d'
 ```
+
+**Podman (macmini-devserver):**
+
+First, ensure the Podman socket is active (one-time setup):
+```bash
+# Linux (systemd)
+systemctl --user enable --now podman.socket
+
+# macOS (Homebrew)
+launchctl load ~/Library/LaunchAgents/homebrew.mxcl.podman.plist
+```
+
+Then deploy:
+```bash
+ssh macmini-devserver 'cd ~/Projects/qwickguard && git pull && DOCKER_SOCKET=/run/user/501/podman/podman.sock podman compose up -d'
+```
+
+Alternatively, create a symlink so the default socket path works:
+```bash
+sudo ln -s /run/user/501/podman/podman.sock /var/run/docker.sock
+# then: docker compose up -d (or podman compose up -d)
+```
+
+Set `DOCKER_SOCKET` in `.env` to avoid passing it on every command (see `.env.example`).
 
 ### Install/update agent on macmini
 
