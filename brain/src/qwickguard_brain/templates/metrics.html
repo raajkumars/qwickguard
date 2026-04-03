@@ -8,7 +8,7 @@
 <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
   <span style="font-size:13px; color:var(--text-muted);">Time Range:</span>
   {% for r in ["5m", "1h", "6h", "24h", "7d"] %}
-  <a href="/metrics?range={{ r }}"
+  <a href="/metrics?range={{ r }}{% if selected_agent_id %}&agent_id={{ selected_agent_id }}{% endif %}"
      class="btn btn-outline"
      style="{% if range == r %}border-color:var(--accent-green); color:var(--accent-green);{% endif %}">
     {{ r }}
@@ -233,7 +233,8 @@ function updateCharts(newData) {
 
 async function fetchAndUpdate() {
   try {
-    const resp = await fetch('/api/metrics/data?range=' + currentRange);
+    const agentParam = '{{ selected_agent_id }}' ? '&agent_id={{ selected_agent_id }}' : '';
+    const resp = await fetch('/api/metrics/data?range=' + currentRange + agentParam);
     if (resp.ok) {
       const newData = await resp.json();
       updateCharts(newData);

@@ -36,7 +36,7 @@
     <div class="card-title" style="margin-bottom:0;">Notification History</div>
     <div style="margin-left:auto; display:flex; gap:8px;">
       {% for s in ["", "critical", "warning", "info"] %}
-      <a href="/notifications{% if s %}?severity={{ s }}{% endif %}"
+      <a href="/notifications{% if s or selected_agent_id %}?{% endif %}{% if s %}severity={{ s }}{% endif %}{% if s and selected_agent_id %}&{% endif %}{% if selected_agent_id %}agent_id={{ selected_agent_id }}{% endif %}"
          class="btn btn-outline" style="font-size:11px; padding:4px 10px;
          {% if severity_filter == s %}border-color:var(--accent-green); color:var(--accent-green);{% endif %}">
         {% if s %}{{ s }}{% else %}All{% endif %}

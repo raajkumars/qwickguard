@@ -1,5 +1,6 @@
 # QwickGuard Monitoring Stack
-# Deploy on macmini: docker compose up -d
+# Deploy on macmini (Docker): docker compose up -d
+# Deploy on macmini (Podman): DOCKER_SOCKET=/run/user/501/podman/podman.sock podman compose up -d
 # UIs accessible via Tailscale at http://macmini-devserver:<port>
 
 services:
@@ -9,7 +10,7 @@ services:
     restart: unless-stopped
     privileged: true
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
     environment:
       CONTAINERS: 1
       SERVICES: 1
@@ -84,7 +85,7 @@ services:
     network_mode: host
     volumes:
       - beszel_socket:/beszel_socket
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
     environment:
       LISTEN: /beszel_socket/beszel.sock
       KEY: "${BESZEL_AGENT_KEY}"

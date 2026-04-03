@@ -256,23 +256,4 @@
   {% endif %}
 </div>
 
-<!-- Row 5: Quick links -->
-<div class="mt-16" style="display:flex; gap:12px; flex-wrap:wrap;">
-  <a class="btn btn-outline"
-     href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8090' }}"
-     target="_blank" rel="noopener">
-    &#9760; Beszel
-  </a>
-  <a class="btn btn-outline"
-     href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':9000' }}"
-     target="_blank" rel="noopener">
-    &#9881; Portainer
-  </a>
-  <a class="btn btn-outline"
-     href="{{ '//' + request.headers.get('host', 'localhost').split(':')[0] + ':8888' }}"
-     target="_blank" rel="noopener">
-    &#9646; Dozzle
-  </a>
-</div>
-
 {% endif %}
